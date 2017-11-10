@@ -1,0 +1,13 @@
+vault_path: '/secret/deploys/portus'
+cn: 'sandbox-portus.example.com'
+env: "Prod"
+app: "portus"
+db_name: "mydb"
+db_user: "dbuser"
+aws_region: "us-east-1"
+iam_user: "portus"
+s3_bucket: "portus-image-storage"
+db_endpoints: "myprodendpoint"
+# Set true for production
+use_rds: "false"
+use_s3: "false"

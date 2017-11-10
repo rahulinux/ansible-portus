@@ -1,0 +1,21 @@
+version: 0.1
+loglevel: debug
+storage:
+{% if use_s3 is defined and use_s3 == 'true' %}
+  s3:
+{% if aws_secrets is defined %}
+    accesskey: {{ aws_secrets.access_key_id }}
+    secretkey: {{ aws_secrets.secret_access_key }}
+{% endif %}
+    region: {{ aws_region }}
+    bucket: {{ s3_bucket }}
+{% else %}
+  filesystem:
+    rootdirectory: /var/lib/registry
+{% endif %}
+  delete:
+    enabled: true
+http:
+  addr: 0.0.0.0:5000
+  debug:
+    addr: 0.0.0.0:5001

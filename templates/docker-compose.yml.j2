@@ -1,0 +1,111 @@
+version: "3"
+services:
+{% if use_rds != 'true' %}
+  db:
+    image: library/mariadb:10.0.23
+    environment:
+      MYSQL_DATABASE: "{{ db_name }}"
+      MYSQL_ROOT_PASSWORD: "${DATABASE_PASSWORD}"
+    volumes:
+      - ./db:/var/lib/mysql
+    restart: unless-stopped
+{% endif %}
+
+  portus: 
+    # image: opensuse/portus:head
+    # Bug in Official image : https://github.com/SUSE/Portus/issues/1418
+    image: mssola/portus:susecon 
+    environment:
+      PORTUS_MACHINE_FQDN_VALUE: "${MACHINE_FQDN}"
+      PORTUS_PRODUCTION_HOST: "{{ db_endpoints if use_rds == 'true' else 'db' }}"
+      PORTUS_PRODUCTION_DATABASE: "{{ db_name }}"
+      PORTUS_PRODUCTION_USERNAME: "{{ db_user }}"
+      PORTUS_PRODUCTION_PASSWORD: "${DATABASE_PASSWORD}"
+      PORTUS_DB_POOL: 5
+      PORTUS_SECRET_KEY_BASE: "${SECRET_KEY_BASE}" 
+      PORTUS_KEY_PATH: /certificates/portus.key
+      PORTUS_PASSWORD: "${PORTUS_PASSWORD}"
+      PORTUS_PUMA_TLS_KEY: /certificates/portus.key
+      PORTUS_PUMA_TLS_CERT: /certificates/portus.crt
+      RAILS_ENV: "production"
+    ports:
+      - 3000:3000
+{% if use_rds != 'true' %}
+    links:
+      - db
+{% endif %}
+    volumes:
+      - ./ssl:/certificates:ro
+      - static:/srv/Portus/public
+    restart: unless-stopped
+
+  crono:
+    image: opensuse/portus:head
+    environment:
+      PORTUS_MACHINE_FQDN_VALUE: "${MACHINE_FQDN}"
+      PORTUS_PRODUCTION_HOST: "{{ db_endpoints if use_rds == 'true' else 'db' }}"
+      PORTUS_PRODUCTION_DATABASE: "{{ db_name }}"
+      PORTUS_PRODUCTION_USERNAME: "{{ db_user }}"
+      PORTUS_PRODUCTION_PASSWORD: "${DATABASE_PASSWORD}"
+      PORTUS_DB_POOL: 5
+      PORTUS_SECRET_KEY_BASE: "${SECRET_KEY_BASE}"
+      PORTUS_KEY_PATH: /certificates/portus.key
+      PORTUS_PASSWORD: "${PORTUS_PASSWORD}"
+      PORTUS_INIT_COMMAND: "bin/crono"
+{% if use_rds != 'true' %}
+    links:
+      - db
+{% endif %}
+    volumes:
+      - ./ssl:/certificates:ro
+
+  registry:
+    image: library/registry:2.6
+    command: ["/bin/sh", "/etc/docker/registry/init"]
+    environment:
+      # Authentication
+      REGISTRY_HTTP_SECRET: ${SECRET_KEY_BASE}
+      REGISTRY_AUTH_TOKEN_REALM: https://${MACHINE_FQDN}/v2/token
+      REGISTRY_AUTH_TOKEN_SERVICE: ${MACHINE_FQDN}
+      REGISTRY_AUTH_TOKEN_ISSUER: ${MACHINE_FQDN}
+      REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE: /secrets/portus.crt
+
+      # SSL
+      REGISTRY_HTTP_TLS_CERTIFICATE: /secrets/portus.crt
+      REGISTRY_HTTP_TLS_KEY: /secrets/portus.key
+
+      # Portus endpoint
+      REGISTRY_NOTIFICATIONS_ENDPOINTS: >
+        - name: portus
+          url: https://${MACHINE_FQDN}/v2/webhooks/events
+          timeout: 2000ms
+          threshold: 5
+          backoff: 1s
+    volumes:
+      - ./registry/lib:/var/lib/registry
+      - ./ssl:/secrets:ro
+      - ./registry/config.yml:/etc/docker/registry/config.yml:ro
+      - ./registry/init:/etc/docker/registry/init:ro
+    ports:
+      - 5000:5000
+      - 5001:5001 # required to access debug service
+    links:
+      - portus:portus
+
+  nginx:
+    image: library/nginx:alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/secrets:ro
+      - static:/srv/Portus/public:ro
+    ports:
+      - 80:80
+      - 443:443
+    links:
+      - registry:registry
+      - portus:portus
+    restart: unless-stopped
+
+volumes:
+  static:
+    driver: local

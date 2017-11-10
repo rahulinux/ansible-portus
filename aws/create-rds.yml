@@ -1,0 +1,38 @@
+---
+- hosts: localhost
+  become: false
+  gather_facts: false
+  tasks:
+    - name: read secrets from vault
+      hashivault_read:
+        secret: "{{vault_path}}/config"
+      register: config_data
+
+    - name: extract secrets
+      set_fact:
+        db_password: "{{config_data.value.db_password }}"
+
+    - name: create mysql instance
+      rds:
+        command: create
+        instance_name: "{{ app }}db"
+        db_engine: MySQL
+        engine_version: '5.7.19'
+        vpc_security_groups:
+          - sg-mysgid
+        publicly_accessible: "false"
+        size: 10
+        instance_type: db.t2.medium
+        region: "{{ aws_region }}"
+        zone: us-east-1b
+        db_name: "{{ db_name }}"
+        username: "{{ db_user }}"
+        password: '{{ db_password }}'
+        tags:
+          Environment: "{{ env }}"
+          Application: "{{ app }}"
+        wait: yes
+        wait_timeout: 600
+      register: db_create
+
+    - debug: var=db_create
