@@ -1,0 +1,13 @@
+---
+ - block:
+   - name: read certs from vault
+     hashivault_read:
+       secret: "{{vault_path}}/certs"
+     register: certs_data
+     become: false
+     delegate_to: localhost
+
+   - name: extract certs
+     set_fact:
+       certs: "{{certs_data.value}}"
+     no_log: true

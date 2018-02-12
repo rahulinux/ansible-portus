@@ -2,37 +2,37 @@
 - hosts: localhost
   gather_facts: no
   tasks:
+
   - name: Creating S3 Bucket for docker images 
     s3_bucket: 
        name: "{{ s3_bucket }}"
        state: present
        region: "{{ aws_region }}"
 
-  # Don't use following thing, if you have instance role
-       
-  - name: Create new IAM user for portus s3 access with API keys
-    iam: 
-      iam_type: user
-      name: "{{ iam_user }}"
-      access_key_state: create
-      state: present
-    register: iam_status
-
-
-  - name: Storing secrets in valut 
-    hashivault_write: 
-       secret: "{{ vault_path }}/aws"
-       data:
-         access_key_id:  "{{ iam_status.user_meta.access_keys | map(attribute='access_key_id') | join('') }}"
-         secret_access_key:  "{{ iam_status.user_meta.access_keys | map(attribute='secret_access_key') | join('') }}"
-    when: iam_status.changed
-
-  - name: Create S3 policy to allow bucket 
-    iam_policy:
-       iam_type: user
-       iam_name: "{{ iam_user }}"
-       policy_name: "s3_access_to_portus"
-       state: present
-       policy_json: "{{ lookup('template','s3_policy.json.j2') }}"
-
+## Uncomment following thing if you are not using ec2 instance iam role
+#   - name: Create new IAM user for portus s3 access with API keys
+#     iam: 
+#       iam_type: user
+#       name: "{{ iam_user }}"
+#       access_key_state: create
+#       state: present
+#     register: iam_status
+# 
+# 
+#   - name: Storing secrets in valut 
+#     hashivault_write: 
+#        secret: "{{ vault_path }}/aws"
+#        data:
+#          access_key_id:  "{{ iam_status.user_meta.access_keys | map(attribute='access_key_id') | join('') }}"
+#          secret_access_key:  "{{ iam_status.user_meta.access_keys | map(attribute='secret_access_key') | join('') }}"
+#     when: iam_status.changed
+# 
+#   - name: Create S3 policy to allow bucket 
+#     iam_policy:
+#        iam_type: user
+#        iam_name: "{{ iam_user }}"
+#        policy_name: "s3_access_to_portus"
+#        state: present
+#        policy_json: "{{ lookup('template','s3_policy.json.j2') }}"
+# 
 

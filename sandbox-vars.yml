@@ -1,13 +1,26 @@
-vault_path: '/secret/deploys/portus'
-cn: 'sandbox-portus.example.com'
-env: "Prod"
+vault_path: '/secret/deploys/portus-dev'
+app_home: "/opt/apps/portus"
+cn: 'portus.internal.loc'
+external_cn: 'porto.external.com'
+env: "Dev"
 app: "portus"
-db_name: "mydb"
-db_user: "dbuser"
+db_name: "portusdb"
+db_user: "portoadmin"
 aws_region: "us-east-1"
+portus_user: "porto"
 iam_user: "portus"
 s3_bucket: "portus-image-storage"
-db_endpoints: "myprodendpoint"
+db_endpoints: "portusdb.endpoint"
 # Set true for production
-use_rds: "false"
-use_s3: "false"
+use_rds: "true"
+use_s3: "true"
+# SMTP details 
+smtp_enable: "true"
+email_from: "noreply@external.com"
+email_name: "Portus"
+reply_to: "noreply@external.com"
+smtp_server: "email-smtp.us-east-1.amazonaws.com"
+smtp_port: "587"
+smtp_domain: "external.com"
+# smtp_user will read from secrets 
+# smtp_pass will read from screts

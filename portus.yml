@@ -1,69 +1,9 @@
 ---
 - hosts: portus
   gather_facts: no
+  remote_user: centos
   become: true
-  vars:
-    app_home: "/opt/apps/portus"
-  tasks:
-
-  - name: create folders for docker-compose
-    file: 
-      dest: "{{ app_home }}/{{ item }}"
-      state: directory
-    with_items:
-      - ssl
-      - nginx
-      - registry
-
-  - block:
-    - name: read secret from vault
-      hashivault_read:
-        secret: "{{ vault_path }}/config"
-      register: config_data
-
-    - name: extract secrets
-      set_fact: 
-        secrets: "{{ config_data.value }}"
-
-    - name: read certs from vault
-      hashivault_read:
-        secret: "{{vault_path}}/certs"
-      register: certs_data
-
-    - name: extract certs
-      set_fact:
-        certs: "{{certs_data.value}}"
-
-    - name: read aws keys from vault
-      hashivault_read:
-        secret: "{{vault_path}}/aws"
-      register: aws_data
-
-    - name: extract certs
-      set_fact:
-        aws_secrets: "{{ aws_data.value }}"
-
-    no_log: true
-    become: false
-    delegate_to: localhost
-
-  - name: deploy certs
-    copy: 
-       content: "{{ item.content }}"
-       dest: "{{ item.path }}"
-    with_items:
-       - { content: "{{ certs.certificate }}\n", path: "{{ app_home }}/ssl/portus.crt" }
-       - { content: "{{ certs.private_key }}\n", path: "{{ app_home }}/ssl/portus.key" }
-    no_log: true
-
-  - name: deploy docker-compose.yml, .env, nginx conf
-    template:
-      src: "{{ item.src }}"
-      dest: "{{ item.dest }}" 
-    with_items:
-      - { src: docker-compose.yml.j2, dest: "{{ app_home }}/docker-compose.yml" } 
-      - { src: env.j2, dest: "{{ app_home }}/.env" } 
-      - { src: nginx.conf.j2, dest: "{{ app_home }}/nginx/nginx.conf" } 
-      - { src: init.j2, dest: "{{ app_home }}/registry/init" } 
-      - { src: config.yml.j2, dest: "{{ app_home }}/registry/config.yml" } 
-
+  roles: 
+  - role: vault-load-config
+  - role: vault-load-certs
+  - role: portus

@@ -1,0 +1,30 @@
+---
+- name: create folders for docker-compose
+  file: 
+    dest: "{{ app_home }}/{{ item }}"
+    state: directory
+  with_items:
+    - ssl
+    - nginx
+    - registry
+
+- name: deploy certs
+  copy: 
+     content: "{{ item.content }}"
+     dest: "{{ item.path }}"
+  with_items:
+     - { content: "{{ certs.certificate }}\n", path: "{{ app_home }}/ssl/portus.crt" }
+     - { content: "{{ certs.private_key }}\n", path: "{{ app_home }}/ssl/portus.key" }
+     - { content: "{{ certs.issuing_ca }}\n{{ certs.certificate }}\n", path: "{{ app_home }}/ssl/root_ca.crt" }
+  no_log: true
+
+- name: deploy docker-compose.yml, .env, nginx conf
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}" 
+  with_items:
+    - { src: docker-compose.yml.j2, dest: "{{ app_home }}/docker-compose.yml" } 
+    - { src: env.j2, dest: "{{ app_home }}/.env" } 
+    - { src: nginx.conf.j2, dest: "{{ app_home }}/nginx/nginx.conf" } 
+    - { src: init.j2, dest: "{{ app_home }}/registry/init" } 
+    - { src: config.yml.j2, dest: "{{ app_home }}/registry/config.yml" } 
